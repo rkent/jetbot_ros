@@ -24,19 +24,19 @@
 
 #include <sensor_msgs/Image.h>
 #include <sensor_msgs/image_encodings.h>
+#include <sensor_msgs/CameraInfo.h>
 
 #include <jetson-utils/gstCamera.h>
+#include <image_transport/image_transport.h>
 
 #include "image_converter.h"
-
-
 
 // globals	
 gstCamera* camera = NULL;
 
 imageConverter* camera_cvt = NULL;
-ros::Publisher* camera_pub = NULL;
-
+//ros::Publisher* camera_pub = NULL;
+image_transport::CameraPublisher* it_pub;
 
 // aquire and publish camera frame
 bool aquireFrame()
@@ -59,6 +59,9 @@ bool aquireFrame()
 
 	// populate the message
 	sensor_msgs::Image msg;
+    sensor_msgs::CameraInfo info;
+    info.width = camera->GetWidth();
+    info.height = camera->GetHeight();
 
 	if( !camera_cvt->Convert(msg, imageConverter::ROSOutputFormat, imgRGBA) )
 	{
@@ -67,7 +70,8 @@ bool aquireFrame()
 	}
 
 	// publish the message
-	camera_pub->publish(msg);
+	//camera_pub->publish(msg);
+    it_pub->publish(msg, info);
 	// RKJ: Don't do a log entry on each frame
 	//ROS_INFO("published camera frame");
 	return true;
@@ -96,6 +100,7 @@ int main(int argc, char **argv)
 	 * open camera device
 	 */
 	camera = gstCamera::Create(camera_device.c_str());
+    image_transport::ImageTransport it_(nh);
 
 	if( !camera )
 	{
@@ -120,8 +125,9 @@ int main(int argc, char **argv)
 	 * advertise publisher topics
 	 */
 	ros::Publisher camera_publisher = private_nh.advertise<sensor_msgs::Image>("raw", 2);
-	camera_pub = &camera_publisher;
-
+    image_transport::CameraPublisher it_publisher = it_.advertiseCamera("image_raw", 2);
+	// camera_pub = &camera_publisher;
+    it_pub = &it_publisher;
 
 	/*
 	 * start the camera streaming
