@@ -28,16 +28,21 @@
 
 #include <jetson-utils/gstCamera.h>
 #include <image_transport/image_transport.h>
+#include <camera_info_manager/camera_info_manager.h>
 
 #include "image_converter.h"
+#include <memory>
 
 // globals	
 gstCamera* camera = NULL;
-const char* CAMERA_FRAME = "pantilt_camera";
+std::string CAMERA_FRAME{"pantilt_camera"};
+std::string CAMERA_NAME{"pantilt_camera"};
 
 imageConverter* camera_cvt = NULL;
-//ros::Publisher* camera_pub = NULL;
 image_transport::CameraPublisher* it_pub;
+
+/** camera calibration information */
+std::unique_ptr<camera_info_manager::CameraInfoManager> cam_info_mgr;
 
 // aquire and publish camera frame
 bool aquireFrame()
@@ -60,9 +65,7 @@ bool aquireFrame()
 
 	// populate the message
 	sensor_msgs::Image msg;
-    sensor_msgs::CameraInfo info;
-    info.width = camera->GetWidth();
-    info.height = camera->GetHeight();
+    const sensor_msgs::CameraInfoPtr info(new sensor_msgs::CameraInfo(cam_info_mgr->getCameraInfo()));
 
 	if( !camera_cvt->Convert(msg, imageConverter::ROSOutputFormat, imgRGBA) )
 	{
@@ -71,10 +74,8 @@ bool aquireFrame()
 	}
 
 	// publish the message
-	//camera_pub->publish(msg);
     msg.header.frame_id = CAMERA_FRAME;
-    msg.header.stamp = ros::Time::now();
-    it_pub->publish(msg, info);
+    it_pub->publish(msg, *info, ros::Time::now());
 	// RKJ: Don't do a log entry on each frame
 	//ROS_INFO("published camera frame");
 	return true;
@@ -84,10 +85,13 @@ bool aquireFrame()
 // node main loop
 int main(int argc, char **argv)
 {
-	ros::init(argc, argv, "jetbot_camera");
+	ros::init(argc, argv, CAMERA_NAME);
  
 	ros::NodeHandle nh;
 	ros::NodeHandle private_nh("~");
+
+    /** camera calibration information */
+    cam_info_mgr = std::unique_ptr<camera_info_manager::CameraInfoManager>(new camera_info_manager::CameraInfoManager(nh));
 
 	/*
 	 * retrieve parameters
@@ -97,13 +101,17 @@ int main(int argc, char **argv)
 	private_nh.param<std::string>("device", camera_device, camera_device);
 	
 	ROS_INFO("opening camera device %s", camera_device.c_str());
-
+    cam_info_mgr->setCameraName(CAMERA_NAME);
 	
 	/*
 	 * open camera device
 	 */
 	camera = gstCamera::Create(camera_device.c_str());
     image_transport::ImageTransport it_(nh);
+
+    // get current CameraInfo data
+    sensor_msgs::CameraInfoPtr
+      ci(new sensor_msgs::CameraInfo(cam_info_mgr->getCameraInfo()));
 
 	if( !camera )
 	{
@@ -127,9 +135,7 @@ int main(int argc, char **argv)
 	/*
 	 * advertise publisher topics
 	 */
-	//ros::Publisher camera_publisher = private_nh.advertise<sensor_msgs::Image>("raw", 2);
-    image_transport::CameraPublisher it_publisher = it_.advertiseCamera("image_raw", 1);
-	// camera_pub = &camera_publisher;
+    image_transport::CameraPublisher it_publisher = it_.advertiseCamera(CAMERA_NAME + "/image_raw", 1);
     it_pub = &it_publisher;
 
 	/*
