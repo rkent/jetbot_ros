@@ -33,6 +33,7 @@
 
 // globals	
 gstCamera* camera = NULL;
+const char* CAMERA_FRAME = "pantilt_camera";
 
 imageConverter* camera_cvt = NULL;
 //ros::Publisher* camera_pub = NULL;
@@ -71,6 +72,8 @@ bool aquireFrame()
 
 	// publish the message
 	//camera_pub->publish(msg);
+    msg.header.frame_id = CAMERA_FRAME;
+    msg.header.stamp = ros::Time::now();
     it_pub->publish(msg, info);
 	// RKJ: Don't do a log entry on each frame
 	//ROS_INFO("published camera frame");
@@ -124,8 +127,8 @@ int main(int argc, char **argv)
 	/*
 	 * advertise publisher topics
 	 */
-	ros::Publisher camera_publisher = private_nh.advertise<sensor_msgs::Image>("raw", 2);
-    image_transport::CameraPublisher it_publisher = it_.advertiseCamera("image_raw", 2);
+	//ros::Publisher camera_publisher = private_nh.advertise<sensor_msgs::Image>("raw", 2);
+    image_transport::CameraPublisher it_publisher = it_.advertiseCamera("image_raw", 1);
 	// camera_pub = &camera_publisher;
     it_pub = &it_publisher;
 
