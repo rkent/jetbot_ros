@@ -35,7 +35,7 @@
 
 // globals	
 gstCamera* camera = NULL;
-std::string CAMERA_FRAME{"pantilt_camera"};
+std::string CAMERA_FRAME{"pantilt_camera_optical_frame"};
 std::string CAMERA_NAME{"pantilt_camera"};
 
 imageConverter* camera_cvt = NULL;
@@ -74,8 +74,10 @@ bool aquireFrame()
 	}
 
 	// publish the message
+    info->header.frame_id = CAMERA_FRAME;
     msg.header.frame_id = CAMERA_FRAME;
     it_pub->publish(msg, *info, ros::Time::now());
+    //std::cout << *info;
 	// RKJ: Don't do a log entry on each frame
 	//ROS_INFO("published camera frame");
 	return true;
