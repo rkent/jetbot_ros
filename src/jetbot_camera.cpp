@@ -134,6 +134,32 @@ int main(int argc, char **argv)
     sensor_msgs::CameraInfoPtr
       ci(new sensor_msgs::CameraInfo(cam_info_mgr->getCameraInfo()));
 
+    // scale CameraInfo if height or width changes
+
+    if (width != IMAGE_WIDTH || height != IMAGE_HEIGHT)
+    {
+        // adapted from https://github.com/ros-perception/image_pipeline/blob/noetic/image_proc/src/nodelets/resize.cpp
+        sensor_msgs::CameraInfoPtr dst_info_msg(new sensor_msgs::CameraInfo(*ci));
+
+        double scale_y = static_cast<double>(height) / static_cast<double>(IMAGE_HEIGHT);
+        double scale_x = static_cast<double>(width) / static_cast<double>(IMAGE_WIDTH);
+        dst_info_msg->height = static_cast<int>(height);
+        dst_info_msg->width = static_cast<int>(width);
+
+        dst_info_msg->K[0] = dst_info_msg->K[0] * scale_x;  // fx
+        dst_info_msg->K[2] = dst_info_msg->K[2] * scale_x;  // cx
+        dst_info_msg->K[4] = dst_info_msg->K[4] * scale_y;  // fy
+        dst_info_msg->K[5] = dst_info_msg->K[5] * scale_y;  // cy
+
+        dst_info_msg->P[0] = dst_info_msg->P[0] * scale_x;  // fx
+        dst_info_msg->P[2] = dst_info_msg->P[2] * scale_x;  // cx
+        dst_info_msg->P[3] = dst_info_msg->P[3] * scale_x;  // T
+        dst_info_msg->P[5] = dst_info_msg->P[5] * scale_y;  // fy
+        dst_info_msg->P[6] = dst_info_msg->P[6] * scale_y;  // cy
+
+        cam_info_mgr->setCameraInfo(*dst_info_msg);
+    }
+
 	if( !camera )
 	{
 		ROS_ERROR("failed to open camera device %s", camera_device.c_str());
