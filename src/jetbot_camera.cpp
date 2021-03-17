@@ -101,6 +101,18 @@ int main(int argc, char **argv)
 	std::string camera_device = "0";	// MIPI CSI camera by default
 
 	private_nh.param<std::string>("device", camera_device, camera_device);
+
+    // RKJ added parameters
+    int width;
+    int height;
+    int frameRate;
+    const int IMAGE_WIDTH     = 1280;
+    const int IMAGE_HEIGHT    = 720;
+    const int IMAGE_FPS       = 30;
+
+    private_nh.param("width", width, IMAGE_WIDTH);
+    private_nh.param("height", height, IMAGE_HEIGHT);
+    private_nh.param("framerate", frameRate, IMAGE_FPS);
 	
 	ROS_INFO("opening camera device %s", camera_device.c_str());
     cam_info_mgr->setCameraName(CAMERA_NAME);
@@ -108,7 +120,14 @@ int main(int argc, char **argv)
 	/*
 	 * open camera device
 	 */
-	camera = gstCamera::Create(camera_device.c_str());
+    // RKJ test, resize
+	//camera = gstCamera::Create(camera_device.c_str());
+    videoOptions opt;
+    opt.resource = camera_device.c_str();
+    opt.width = width;
+    opt.height = height;
+    opt.frameRate = (float)frameRate;
+    camera = gstCamera::Create(opt);
     image_transport::ImageTransport it_(nh);
 
     // get current CameraInfo data
